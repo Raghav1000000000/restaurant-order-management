@@ -16,7 +16,6 @@ interface AdminAuthContextType {
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
 
-const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123';
 const AUTH_KEY = 'admin_auth';
 
 export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
@@ -31,12 +30,22 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (password: string): Promise<{ error: string | null }> => {
-    if (password === ADMIN_PASSWORD) {
-      localStorage.setItem(AUTH_KEY, 'true');
-      setIsAuthenticated(true);
-      return { error: null };
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'admin', password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        localStorage.setItem(AUTH_KEY, 'true');
+        setIsAuthenticated(true);
+        return { error: null };
+      }
+      return { error: data.error || 'Invalid password' };
+    } catch {
+      return { error: 'Could not reach the server' };
     }
-    return { error: 'Invalid admin password' };
   };
 
   const signOut = () => {

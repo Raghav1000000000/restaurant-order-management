@@ -16,7 +16,6 @@ interface KitchenAuthContextType {
 
 const KitchenAuthContext = createContext<KitchenAuthContextType | undefined>(undefined);
 
-const KITCHEN_PASSWORD = process.env.NEXT_PUBLIC_KITCHEN_PASSWORD || 'kitchen123';
 const AUTH_KEY = 'kitchen_auth';
 
 export function KitchenAuthProvider({ children }: { children: React.ReactNode }) {
@@ -31,12 +30,22 @@ export function KitchenAuthProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const signIn = async (password: string): Promise<{ error: string | null }> => {
-    if (password === KITCHEN_PASSWORD) {
-      localStorage.setItem(AUTH_KEY, 'true');
-      setIsAuthenticated(true);
-      return { error: null };
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'kitchen', password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        localStorage.setItem(AUTH_KEY, 'true');
+        setIsAuthenticated(true);
+        return { error: null };
+      }
+      return { error: data.error || 'Invalid password' };
+    } catch {
+      return { error: 'Could not reach the server' };
     }
-    return { error: 'Invalid password' };
   };
 
   const signOut = () => {
